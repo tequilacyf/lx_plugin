@@ -32,8 +32,8 @@ const urlEncode = (obj: Record<string, any>): string => {
 }
 
 export const httpFetch = (url: string, options: HttpFetchOptions = { method: 'get' }): RequestObj => {
-  const controller = new AbortController()
   let isCancelled = false
+  let timedOut = false
 
   const doFetch = async (): Promise<HttpFetchResult> => {
     const method = (options.method || 'get').toUpperCase()
@@ -51,25 +51,30 @@ export const httpFetch = (url: string, options: HttpFetchOptions = { method: 'ge
       headers['Content-Type'] = 'application/x-www-form-urlencoded'
       fetchBody = urlEncode(options.form)
     } else if (options.formData) {
-      const fd = new FormData()
-      for (const [k, v] of Object.entries(options.formData)) {
-        fd.append(k, String(v))
+      try {
+        const fd = new FormData()
+        for (const [k, v] of Object.entries(options.formData)) {
+          fd.append(k, String(v))
+        }
+        fetchBody = fd as any
+      } catch (_e) {
+        headers['Content-Type'] = 'application/x-www-form-urlencoded'
+        fetchBody = urlEncode(options.formData)
       }
-      fetchBody = fd as any
     }
 
     const timeout = options.timeout || 15000
-    const timeoutId = setTimeout(() => controller.abort(), timeout)
+    const timeoutId = setTimeout(() => { timedOut = true }, timeout)
 
     try {
       const resp = await fetch(url, {
         method,
         headers,
         body: fetchBody,
-        signal: controller.signal as any,
       })
 
       clearTimeout(timeoutId)
+      if (timedOut) throw new Error('Request timeout')
 
       const rawText = await resp.text()
       let body: any = rawText
@@ -86,7 +91,7 @@ export const httpFetch = (url: string, options: HttpFetchOptions = { method: 'ge
     } catch (err: any) {
       clearTimeout(timeoutId)
       if (isCancelled) throw new Error('Request cancelled')
-      if (err?.name === 'AbortError') throw new Error('Request timeout')
+      if (timedOut) throw new Error('timeout')
       throw err
     }
   }
@@ -96,7 +101,6 @@ export const httpFetch = (url: string, options: HttpFetchOptions = { method: 'ge
     cancelHttp: () => {
       isCancelled = true
       requestObj.isCancelled = true
-      controller.abort()
     },
     promise: null as any,
   }
