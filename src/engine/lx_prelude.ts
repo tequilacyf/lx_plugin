@@ -1,5 +1,4 @@
 export const LX_PRELUDE_JS = `
-'use strict';
 
 globalThis.window = globalThis;
 globalThis.global = globalThis;
