@@ -35,7 +35,9 @@ export class SourceManager {
 
   async importScript(script: string, filename?: string): Promise<SourceImportResult> {
     try {
-      const { metadata, rawScript } = parseSourceScript(script, filename?.replace(/\.\w+$/, ''))
+      // Strip UTF-8 BOM if present
+      const cleanScript = script.charCodeAt(0) === 0xFEFF ? script.slice(1) : script
+      const { metadata, rawScript } = parseSourceScript(cleanScript, filename?.replace(/\.\w+$/, ''))
 
       if (!metadata.name) {
         return { success: false, error: 'Unable to determine source name' }
