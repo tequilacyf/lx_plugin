@@ -1,0 +1,73 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>LX Music Source</title>
+  <link rel="stylesheet" href="css/style.css">
+</head>
+<body>
+  <div class="app">
+    <header class="app-bar">
+      <h1 class="app-title">LX Music Source</h1>
+    </header>
+    
+    <nav class="tabs">
+      <button class="tab active" data-tab="search">搜索</button>
+      <button class="tab" data-tab="sources">音源管理</button>
+      <button class="tab" data-tab="import">导入歌曲</button>
+    </nav>
+
+    <main class="content">
+      <!-- Search Tab -->
+      <section id="tab-search" class="tab-panel active">
+        <div class="search-bar">
+          <input type="text" id="search-keyword" placeholder="搜索歌曲、歌手..." class="input-field">
+          <select id="search-source" class="select-field">
+            <option value="">全部平台</option>
+          </select>
+          <select id="search-quality" class="select-field">
+            <option value="128k">128K</option>
+            <option value="320k" selected>320K</option>
+            <option value="flac">FLAC</option>
+            <option value="flac24bit">Hi-Res</option>
+          </select>
+          <button id="search-btn" class="btn btn-primary">搜索</button>
+        </div>
+        <div id="search-results" class="results-list"></div>
+        <div id="search-pagination" class="pagination"></div>
+      </section>
+
+      <!-- Sources Tab -->
+      <section id="tab-sources" class="tab-panel">
+        <div class="source-actions">
+          <button id="import-url-btn" class="btn btn-outline">从URL导入</button>
+          <label class="btn btn-outline">
+            导入文件
+            <input type="file" id="import-file-input" accept=".js,.zip" multiple hidden>
+          </label>
+          <button id="refresh-sources-btn" class="btn btn-outline">刷新</button>
+        </div>
+        <div id="batch-status" class="batch-status hidden"></div>
+        <div id="sources-list" class="sources-list"></div>
+      </section>
+
+      <!-- Import Tab -->
+      <section id="tab-import" class="tab-panel">
+        <div id="import-queue" class="import-queue">
+          <p class="empty-hint">从搜索结果中点击"导入"按钮添加歌曲</p>
+        </div>
+        <div class="import-actions">
+          <button id="import-all-btn" class="btn btn-primary" disabled>导入所有歌曲到库</button>
+          <button id="clear-queue-btn" class="btn btn-outline">清空</button>
+        </div>
+        <div id="import-results" class="import-results"></div>
+      </section>
+    </main>
+
+    <div id="toast" class="toast hidden"></div>
+  </div>
+
+  <script src="js/app.js"></script>
+</body>
+</html>

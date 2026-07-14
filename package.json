@@ -1,0 +1,19 @@
+{
+  "name": "songloft-plugin-lxmusic",
+  "version": "1.0.0",
+  "description": "Songloft plugin that integrates lx-music third-party sources",
+  "main": "main.js",
+  "scripts": {
+    "build": "songloft-plugin build",
+    "dev": "songloft-plugin dev",
+    "validate": "songloft-plugin validate",
+    "publish": "songloft-plugin publish"
+  },
+  "devDependencies": {
+    "@songloft/plugin-builder": "latest",
+    "@songloft/plugin-sdk": "latest",
+    "typescript": "^5.0.0"
+  },
+  "keywords": ["songloft", "plugin", "lx-music", "music"],
+  "license": "MIT"
+}

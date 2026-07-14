@@ -1,0 +1,18 @@
+{
+  "name": "lxmusic",
+  "version": "1.0.0",
+  "entryPath": "lxmusic",
+  "main": "main.js",
+  "minHostVersion": "1.0.0",
+  "permissions": [
+    "storage",
+    "songs.read",
+    "songs.write",
+    "playlists.read",
+    "playlists.write",
+    "jsenv"
+  ],
+  "download_url": "",
+  "entryHash": "bf7498931e65dce0e191b90a95036b22c8f11b236f3066563e00e38040e9b398",
+  "zipHash": "8df8064acd56dc7eb7e55c6cfa6820a0bf7aec46f3028973cebd1faed2795e89"
+}
