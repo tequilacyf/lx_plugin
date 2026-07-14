@@ -13,8 +13,11 @@ export function registerRoutes(router: any, sourceManager: SourceManager, runtim
   const sourceHandlers = createSourceHandlers(sourceManager)
 
   // Search (manual: SDK createSearchHandler doesn't support source_id/quality)
+  // Register both POST and GET to avoid host hex-decode issue
   router.post('/api/search', handleSearch)
+  router.get('/api/search', handleSearch)
   router.post('/api/search/topone', handleSearchTopOne)
+  router.get('/api/search/topone', handleSearchTopOne)
 
   // Music URL resolution — use SDK factory for contract compliance
   router.post('/api/music/url', createMusicUrlHandler({
