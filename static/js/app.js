@@ -272,10 +272,7 @@
     for (const file of files) {
       try {
         const text = await file.text();
-        const params = new URLSearchParams();
-        params.append('script', text);
-        params.append('filename', file.name);
-        const data = await api('/api/sources/import?' + params.toString());
+        const data = await api('/api/sources/import?script=' + encodeURIComponent(text) + '&filename=' + encodeURIComponent(file.name));
         
         if (data.code === 0) {
           showToast('导入成功: ' + (data.data?.name || file.name), 'success');
