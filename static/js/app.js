@@ -291,7 +291,7 @@
     try {
       const data = await api('/api/platforms');
       const select = $('#search-source');
-      (data.data?.sources || []).forEach(p => {
+      (data.sources || []).forEach(p => {
         const opt = document.createElement('option');
         opt.value = p.id;
         opt.textContent = p.name;
