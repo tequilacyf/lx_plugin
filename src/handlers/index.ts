@@ -1,5 +1,5 @@
-import type { HTTPRequest, HTTPResponse } from '@songloft/plugin-sdk'
-import { parseQuery, jsonResponse } from '@songloft/plugin-sdk'
+import type { HTTPRequest, HTTPResponse, FallbackMatch, MusicUrlFallbackHint, ResolvedMusicUrl } from '@songloft/plugin-sdk'
+import { parseQuery, jsonResponse, createMusicUrlHandler } from '@songloft/plugin-sdk'
 import { handleSearch, handleSearchTopOne } from './search'
 import { handleSonglistTags, handleSonglistList, handleSonglistSearch, handleSonglistDetail, handleSonglistSorts } from './songlist'
 import { handleLeaderboardBoards, handleLeaderboardList } from './leaderboard'
@@ -12,33 +12,58 @@ import { errorResponse, successResponse } from './response'
 export function registerRoutes(router: any, sourceManager: SourceManager, runtimeManager: RuntimeManager) {
   const sourceHandlers = createSourceHandlers(sourceManager)
 
-  // Search
+  // Search (manual: SDK createSearchHandler doesn't support source_id/quality)
   router.post('/api/search', handleSearch)
   router.post('/api/search/topone', handleSearchTopOne)
 
-  // Music URL resolution
-  router.post('/api/music/url', async (req: HTTPRequest): Promise<HTTPResponse> => {
-    try {
-      const body = JSON.parse(new TextDecoder().decode(req.body || new Uint8Array(0)))
-      const { source_data, quality = '320k' } = body
-
-      if (!source_data) return errorResponse('source_data is required')
-
-      const parsed = typeof source_data === 'string' ? JSON.parse(source_data) : source_data
-      const { platform, songInfo } = parsed
-
-      if (!platform || !songInfo) return errorResponse('Invalid source_data')
-
-      const urlResult = await runtimeManager.getMusicUrl(platform, songInfo, quality)
-      if (!urlResult) {
-        return jsonResponse({ error: 'No URL available. Please import a source script.' }, 404)
+  // Music URL resolution — use SDK factory for contract compliance
+  router.post('/api/music/url', createMusicUrlHandler({
+    async resolveUrl(sourceData: Record<string, unknown>): Promise<ResolvedMusicUrl> {
+      const { platform, songInfo, quality } = sourceData as any
+      if (!platform || !songInfo) {
+        throw new Error('Invalid source_data: missing platform or songInfo')
       }
+      const q = quality || '320k'
+      const urlResult = await runtimeManager.getMusicUrl(platform, songInfo, q)
+      if (!urlResult?.url) {
+        throw new Error('source_not_available')
+      }
+      return { url: urlResult.url }
+    },
 
-      return jsonResponse({ url: urlResult.url })
-    } catch (err: any) {
-      return errorResponse(err.message || String(err), 500)
-    }
-  })
+    async fallbackSearch(hint: MusicUrlFallbackHint): Promise<FallbackMatch | null> {
+      if (!hint.enabled) return null
+      // Cross-platform search: try all platforms for the best match
+      const searchQuery = `${hint.title} ${hint.artist}`.trim()
+      if (!searchQuery) return null
+
+      for (const [pid, sdk] of Object.entries(platforms)) {
+        try {
+          if (!sdk?.musicSearch?.search) continue
+          const result = await sdk.musicSearch.search(searchQuery, 1, 5)
+          if (!result?.list?.length) continue
+          const item = result.list[0]
+          return {
+            source_data: {
+              platform: pid,
+              quality: '320k',
+              songInfo: {
+                name: item.name,
+                singer: item.singer,
+                songmid: item.songmid,
+                hash: item.hash || '',
+                copyrightId: item.copyrightId || '',
+                source: pid,
+              },
+            },
+            title: item.name,
+            artist: item.singer,
+          }
+        } catch { /* try next platform */ }
+      }
+      return null
+    },
+  }))
 
   // Direct music URL
   router.post('/api/direct/music/url', async (req: HTTPRequest): Promise<HTTPResponse> => {

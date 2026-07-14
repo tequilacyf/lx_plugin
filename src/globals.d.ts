@@ -21,11 +21,13 @@ declare const zlib: {
 }
 
 // crypto is available as a host polyfill
+// Host API: aesEncrypt/Decrypt take (data, mode, key, iv?) where mode is 'ecb' or 'cbc'
+// Return type is Buffer-like (has .toString(encoding) / ._hex / Uint8Array interface)
 declare const crypto: {
   md5(data: string): string
-  aesEncrypt(data: string, key: string, iv?: string): string
-  aesDecrypt(data: string, key: string, iv?: string): string
-  rsaEncrypt(data: string, key: string): string
+  aesEncrypt(data: string | Uint8Array, mode: string, key: string | Uint8Array, iv?: string | Uint8Array): any
+  aesDecrypt(data: string | Uint8Array, mode: string, key: string | Uint8Array, iv?: string | Uint8Array): any
+  rsaEncrypt(data: string, key: string): any
   randomBytes(size: number): Uint8Array
 }
 

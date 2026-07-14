@@ -2,7 +2,6 @@ import { SourceStorage } from './storage'
 import { parseSourceScript, nameToId, deduplicateId } from './parser'
 import type { SourceMetadata, SourceImportResult, BatchImportStatus } from './types'
 import type { RuntimeManager } from '../engine/manager'
-import { RuntimeManager as RM } from '../engine/manager'
 
 export class SourceManager {
   private storage: SourceStorage
@@ -16,9 +15,9 @@ export class SourceManager {
     batch_errors: [],
   }
 
-  constructor(runtimeManager?: RuntimeManager) {
+  constructor(runtimeManager: RuntimeManager) {
     this.storage = new SourceStorage()
-    this.runtimeManager = runtimeManager || new RM()
+    this.runtimeManager = runtimeManager
   }
 
   async init(): Promise<void> {
@@ -127,7 +126,14 @@ export class SourceManager {
   async toggleSource(id: string): Promise<boolean> {
     const meta = await this.storage.getMetadata(id)
     if (!meta) return false
-    return meta.enabled ? this.disableSource(id) : this.enableSource(id)
+    const newEnabled = !meta.enabled
+    if (newEnabled) {
+      const ok = await this.enableSource(id)
+      return ok ? true : meta.enabled
+    } else {
+      await this.disableSource(id)
+      return false
+    }
   }
 
   // Batch import (for ZIP uploads)

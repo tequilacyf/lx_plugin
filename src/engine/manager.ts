@@ -58,6 +58,7 @@ export class RuntimeManager {
     const runtimes = this.getRuntimesForPlatform(platform)
     if (runtimes.length === 0) return null
 
+    // Sort by success rate descending
     const sorted = [...runtimes].sort((a, b) => {
       const rateA = a.totalCalls > 0 ? a.successCalls / a.totalCalls : 0.5
       const rateB = b.totalCalls > 0 ? b.successCalls / b.totalCalls : 0.5
@@ -66,49 +67,21 @@ export class RuntimeManager {
 
     const candidates = sorted.slice(0, 3)
 
-    const calls = candidates.map(rt => ({
-      name: rt.envName,
-      code: `lx._dispatch(${Date.now()}, "request", ${JSON.stringify(JSON.stringify({
-        source: platform,
-        action: 'musicUrl',
-        info: { musicInfo: songInfo, type: quality },
-      }))});`,
-      timeoutMs: 18000,
-    }))
-
-    // executeParallel returns a single SongloftJSEnvParallelResult
-    const parallelResult = await songloft.jsenv.executeParallel(calls, 3)
-
-    const winnerIndex = parallelResult.successIndex
-
-    if (winnerIndex >= 0 && parallelResult.result) {
-      const result = parallelResult.result
-      if (!result.error) {
-        const candidate = candidates[winnerIndex]
-        candidate.successCalls++
-        candidate.totalCalls++
-
-        // result.result is a string (last expression toString)
-        // The dispatch result is JSON-encoded in the string
-        if (typeof result.result === 'string') {
-          try {
-            const parsed = JSON.parse(result.result)
-            const url = typeof parsed === 'string' ? parsed : (parsed?.url || null)
-            if (url) return { url, sourceId: candidate.id }
-          } catch {
-            // If not JSON, treat as raw URL
-            if (result.result.startsWith('http')) return { url: result.result, sourceId: candidate.id }
-          }
+    // Use per-runtime getMusicUrl (which uses executeWait with event capture)
+    // Run all candidates concurrently; take the first that succeeds
+    const results = await Promise.all(
+      candidates.map(async (rt) => {
+        try {
+          const url = await rt.getMusicUrl(platform, songInfo, quality)
+          return url ? { url, sourceId: rt.id } : null
+        } catch {
+          return null
         }
-        // URL parsing failed but dispatch succeeded — don't double-count this candidate
-      }
-    }
+      })
+    )
 
-    // Failed candidates: increment totalCalls only for those NOT already counted above
-    for (let i = 0; i < candidates.length; i++) {
-      if (i !== winnerIndex || !parallelResult.result || parallelResult.result.error) {
-        candidates[i].totalCalls++
-      }
+    for (const r of results) {
+      if (r?.url) return r
     }
 
     return null

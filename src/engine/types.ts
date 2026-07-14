@@ -24,6 +24,7 @@ export interface RuntimeInstance {
   ready: boolean
   successCalls: number
   totalCalls: number
+  getMusicUrl(platform: string, songInfo: any, quality: string): Promise<string | null>
 }
 
 export interface DispatchResult {

@@ -16,7 +16,7 @@ export const createHttpFetch = async (url: string, options: any, retryNum = 0): 
   try {
     result = await httpFetch(url, options).promise
   } catch (err) {
-    console.log(err)
+    songloft.log.error(String(err))
     return createHttpFetch(url, options, ++retryNum)
   }
   if (result.statusCode !== 200 ||

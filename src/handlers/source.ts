@@ -74,17 +74,20 @@ export function createSourceHandlers(sourceManager: SourceManager) {
 
       if (!id) return errorResponse('id is required')
 
-      let success: boolean
+      let newEnabled: boolean
       if (enabled === true) {
-        success = await sourceManager.enableSource(id)
+        const ok = await sourceManager.enableSource(id)
+        if (!ok) return errorResponse('Enable failed')
+        newEnabled = true
       } else if (enabled === false) {
-        success = await sourceManager.disableSource(id)
+        const ok = await sourceManager.disableSource(id)
+        if (!ok) return errorResponse('Disable failed')
+        newEnabled = false
       } else {
-        success = await sourceManager.toggleSource(id)
+        newEnabled = await sourceManager.toggleSource(id)
       }
 
-      if (!success) return errorResponse('Toggle failed')
-      return successResponse({ enabled: !enabled })
+      return successResponse({ enabled: newEnabled })
     } catch (err: any) {
       return errorResponse(err.message || String(err), 500)
     }
