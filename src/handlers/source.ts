@@ -38,6 +38,7 @@ export function createSourceHandlers(sourceManager: SourceManager) {
     try {
       const body = decodeBody(req)
       if (!body) return errorResponse('Empty request body')
+      songloft.log.info(`[import-url] body length=${body.length} first100="${body.substring(0, 100)}" last100="${body.substring(Math.max(0, body.length - 100))}"`)
       const parsed = JSON.parse(body)
       url = parsed.url
 
