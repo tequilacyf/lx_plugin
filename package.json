@@ -4,7 +4,7 @@
   "description": "Songloft plugin that integrates lx-music third-party sources",
   "main": "main.js",
   "scripts": {
-    "build": "songloft-plugin build && node scripts/inline-js.js",
+    "build": "songloft-plugin build",
     "dev": "songloft-plugin dev",
     "validate": "songloft-plugin validate",
     "publish": "songloft-plugin publish"

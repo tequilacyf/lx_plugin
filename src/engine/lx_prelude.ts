@@ -71,17 +71,17 @@ var _lx = {
     try { data = JSON.parse(dataJSON); } catch(e) { data = dataJSON; }
     var handlers = _lx._eventHandlers[eventName];
     if (!handlers || handlers.length === 0) {
-      __go_send('dispatchError', JSON.stringify({ id: reqId, error: 'No handler for event: ' + eventName }));
+      __go_send('lx_dispatchError', JSON.stringify({ id: reqId, error: 'No handler for event: ' + eventName }));
       return;
     }
     var settled = false;
     var settleTimeout = setTimeout(function() {
-      if (!settled) { settled = true; __go_send('dispatchError', JSON.stringify({ id: reqId, error: 'Dispatch timeout (18s)' })); }
+      if (!settled) { settled = true; __go_send('lx_dispatchError', JSON.stringify({ id: reqId, error: 'Dispatch timeout (18s)' })); }
     }, 18000);
     function settle(result, isError) {
       if (settled) return; settled = true; clearTimeout(settleTimeout);
-      if (isError) { __go_send('dispatchError', JSON.stringify({ id: reqId, error: String(result) })); }
-      else { __go_send('dispatchResult', JSON.stringify({ id: reqId, result: result })); }
+      if (isError) { __go_send('lx_dispatchError', JSON.stringify({ id: reqId, error: String(result) })); }
+      else { __go_send('lx_dispatchResult', JSON.stringify({ id: reqId, result: result })); }
     }
     for (var i = 0; i < handlers.length; i++) {
       try {
@@ -93,12 +93,43 @@ var _lx = {
   },
 
   utils: {
-    buffer: typeof Buffer !== 'undefined' ? Buffer : {
-      from: function(data, enc) {
-        if (typeof data === 'string') { return new Uint8Array(data.length); }
-        return new Uint8Array(data);
-      },
-    },
+    buffer: typeof Buffer !== 'undefined' ? Buffer : (function() {
+      function hexToBytes(s) {
+        var len = s.length / 2;
+        var arr = new Uint8Array(len);
+        for (var i = 0; i < len; i++) { arr[i] = parseInt(s.substr(i * 2, 2), 16); }
+        return arr;
+      }
+      function strToBytes(s) {
+        var arr = new Uint8Array(s.length);
+        for (var i = 0; i < s.length; i++) { arr[i] = s.charCodeAt(i) & 0xff; }
+        return arr;
+      }
+      return {
+        from: function(data, enc) {
+          if (typeof data === 'string') {
+            if (enc === 'hex') return hexToBytes(data);
+            return strToBytes(data);
+          }
+          if (data && typeof data.length === 'number' && typeof data !== 'function') {
+            var arr = new Uint8Array(data.length);
+            for (var i = 0; i < data.length; i++) { arr[i] = data[i]; }
+            return arr;
+          }
+          return new Uint8Array(0);
+        },
+        concat: function(list) {
+          if (!list || !list.length) return new Uint8Array(0);
+          var total = 0;
+          for (var i = 0; i < list.length; i++) { total += list[i].length; }
+          var out = new Uint8Array(total);
+          var pos = 0;
+          for (var i = 0; i < list.length; i++) { out.set(list[i], pos); pos += list[i].length; }
+          return out;
+        },
+        isBuffer: function(obj) { return obj instanceof Uint8Array; },
+      };
+    })(),
     crypto: typeof crypto !== 'undefined' ? crypto : {},
     zlib: typeof zlib !== 'undefined' ? zlib : {},
   },

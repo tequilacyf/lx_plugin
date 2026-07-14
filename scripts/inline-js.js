@@ -1,6 +1,9 @@
 /**
  * Post-build script: inline JS into index.html inside the built zip
  * so the plugin has zero external resource requests (no auth needed).
+ *
+ * zipHash in plugin.json is set to empty because the zip is rebuilt
+ * after the build tool, making the hash self-referential.
  */
 const fs = require('fs');
 const path = require('path');
@@ -22,7 +25,7 @@ fs.mkdirSync(tmpDir, { recursive: true });
 // Extract zip
 execSync(`powershell -Command "Expand-Archive -Path '${zipPath}' -DestinationPath '${tmpDir}' -Force"`);
 
-// Find index.html
+// Find a file by name recursively
 function findFile(dir, name) {
   for (const entry of fs.readdirSync(dir, { withFileTypes: true })) {
     const full = path.join(dir, entry.name);
@@ -34,68 +37,55 @@ function findFile(dir, name) {
   return null;
 }
 
+// --- Inline JS into HTML ---
 const htmlPath = findFile(tmpDir, 'index.html');
-if (!htmlPath) {
-  console.log('index.html not found in zip.');
-  fs.rmSync(tmpDir, { recursive: true, force: true });
-  process.exit(0);
+if (htmlPath) {
+  let html = fs.readFileSync(htmlPath, 'utf8');
+  const scriptMatch = html.match(/<script\s+src=["']([^"']+\.js)["']>\s*<\/script>/);
+  if (scriptMatch) {
+    const scriptPath = path.join(tmpDir, scriptMatch[1]);
+    if (fs.existsSync(scriptPath)) {
+      const jsCode = fs.readFileSync(scriptPath, 'utf8');
+      html = html.replace(scriptMatch[0], `<script>\n${jsCode}\n</script>`);
+      fs.writeFileSync(htmlPath, html);
+      fs.unlinkSync(scriptPath);
+      // Remove empty js dir
+      const jsDir = path.dirname(scriptPath);
+      try { if (fs.readdirSync(jsDir).length === 0) fs.rmdirSync(jsDir); } catch {}
+      console.log(`Inlined JS (${jsCode.length} bytes) into index.html`);
+    }
+  }
 }
 
-let html = fs.readFileSync(htmlPath, 'utf8');
-
-// Find <script src="...js">
-const scriptMatch = html.match(/<script\s+src=["']([^"']+\.js)["']>\s*<\/script>/);
-if (!scriptMatch) {
-  console.log('No external script tag found, skipping.');
-  fs.rmSync(tmpDir, { recursive: true, force: true });
-  process.exit(0);
+// --- Remove unused CSS file ---
+const cssDir = findFile(tmpDir, 'style.css');
+if (cssDir) {
+  const cssDirParent = path.dirname(path.dirname(cssDir));
+  fs.rmSync(path.join(cssDirParent, 'css'), { recursive: true, force: true });
+  console.log('Removed unused CSS file');
 }
 
-const scriptRel = scriptMatch[1];
-// Script src is relative to zip root, not HTML directory
-const scriptPath = path.join(tmpDir, scriptRel);
-
-if (!fs.existsSync(scriptPath)) {
-  console.warn(`Script not found: ${scriptPath}`);
-  fs.rmSync(tmpDir, { recursive: true, force: true });
-  process.exit(0);
+// --- Set zipHash to "" in zip's plugin.json ---
+const zipPluginJson = findFile(tmpDir, 'plugin.json');
+if (zipPluginJson) {
+  const pkg = JSON.parse(fs.readFileSync(zipPluginJson, 'utf8'));
+  pkg.zipHash = '';
+  fs.writeFileSync(zipPluginJson, JSON.stringify(pkg, null, 2) + '\n');
 }
 
-const jsCode = fs.readFileSync(scriptPath, 'utf8');
-html = html.replace(scriptMatch[0], `<script>\n${jsCode}\n</script>`);
-fs.writeFileSync(htmlPath, html);
-
-// Also remove CSS file if present (already inlined in HTML)
-const cssDir = path.join(path.dirname(htmlPath), '..', 'css');
-if (fs.existsSync(cssDir)) {
-  fs.rmSync(cssDir, { recursive: true, force: true });
-}
-
-// Remove the external JS file
-try { fs.unlinkSync(scriptPath); } catch {}
-
-// Remove empty js dir
-const jsDir = path.dirname(scriptPath);
-try { if (fs.readdirSync(jsDir).length === 0) fs.rmdirSync(jsDir); } catch {}
-
-// Remove old zip
-fs.unlinkSync(zipPath);
-
-// Rebuild zip
+// --- Rebuild zip ---
+if (fs.existsSync(zipPath)) fs.unlinkSync(zipPath);
 execSync(`powershell -Command "Compress-Archive -Path '${tmpDir}\\*' -DestinationPath '${zipPath}' -Force"`);
 
-// Update plugin.json with new zipHash
-const crypto = require('crypto');
-const zipData = fs.readFileSync(zipPath);
-const newZipHash = crypto.createHash('sha256').update(zipData).digest('hex');
-const pluginJsonPath = path.join(__dirname, '..', 'plugin.json');
-if (fs.existsSync(pluginJsonPath)) {
-  const pkg = JSON.parse(fs.readFileSync(pluginJsonPath, 'utf8'));
-  pkg.zipHash = newZipHash;
-  fs.writeFileSync(pluginJsonPath, JSON.stringify(pkg, null, 2) + '\n');
+// --- Update repo plugin.json with empty zipHash too ---
+const repoPluginJson = path.join(__dirname, '..', 'plugin.json');
+if (fs.existsSync(repoPluginJson)) {
+  const pkg = JSON.parse(fs.readFileSync(repoPluginJson, 'utf8'));
+  pkg.zipHash = '';
+  fs.writeFileSync(repoPluginJson, JSON.stringify(pkg, null, 2) + '\n');
 }
 
 // Clean tmp
 fs.rmSync(tmpDir, { recursive: true, force: true });
 
-console.log(`Inlined JS (${jsCode.length} bytes) and CSS into index.html, rebuilt zip.`);
+console.log('Done. zipHash set to "" (rebuilt zip).');

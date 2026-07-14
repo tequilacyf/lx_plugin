@@ -7,8 +7,8 @@ export function parseSourceScript(script: string, fallbackName?: string): {
 } {
   const rawScript = script.trim()
 
-  // Match JSDoc block: /** ... */ or /*! ... */
-  const jsdocMatch = rawScript.match(/^\/\*[!*]\s*\n([\s\S]*?)\*\//)
+  // Match JSDoc block: /** ... */ or /*! ... */ (multi-line or single-line)
+  const jsdocMatch = rawScript.match(/^\/\*[!*]\s*(?:\n([\s\S]*?))?\*\//)
 
   const meta: Partial<SourceMetadata> = {
     name: fallbackName || 'Unknown Source',

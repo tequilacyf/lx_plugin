@@ -205,9 +205,13 @@ export function registerRoutes(router: any, sourceManager: SourceManager, runtim
   // Source management
   router.get('/api/sources', sourceHandlers.handleGetSources)
   router.post('/api/sources/import', sourceHandlers.handleImportSource)
+  // Register both POST (per PROMPT.md) and GET (avoid host hex-decode issue)
+  router.post('/api/sources/import-url', sourceHandlers.handleImportUrl)
   router.get('/api/sources/import-url', sourceHandlers.handleImportUrl)
   router.post('/api/sources/import-zip', sourceHandlers.handleImportZip)
   router.delete('/api/sources', sourceHandlers.handleDeleteSource)
+  // Register both PUT (per PROMPT.md) and GET (avoid host hex-decode issue)
+  router.put('/api/sources/toggle', sourceHandlers.handleToggleSource)
   router.get('/api/sources/toggle', sourceHandlers.handleToggleSource)
 
   // Songlist
