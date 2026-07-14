@@ -35,8 +35,13 @@ export class SourceManager {
 
   async importScript(script: string, filename?: string): Promise<SourceImportResult> {
     try {
-      // Strip UTF-8 BOM if present
-      const cleanScript = script.charCodeAt(0) === 0xFEFF ? script.slice(1) : script
+      // Strip UTF-8 BOM and normalize
+      let cleanScript = script
+      if (cleanScript.charCodeAt(0) === 0xFEFF) cleanScript = cleanScript.slice(1)
+      // Also strip any leading non-ASCII junk
+      while (cleanScript.length > 0 && cleanScript.charCodeAt(0) < 32 && cleanScript.charCodeAt(0) !== 10 && cleanScript.charCodeAt(0) !== 13) {
+        cleanScript = cleanScript.slice(1)
+      }
       const { metadata, rawScript } = parseSourceScript(cleanScript, filename?.replace(/\.\w+$/, ''))
 
       if (!metadata.name) {

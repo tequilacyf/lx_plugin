@@ -5,6 +5,20 @@ globalThis.global = globalThis;
 
 var _hostBuffer = typeof Buffer !== 'undefined' ? Buffer : null;
 
+// Polyfill console for scripts that use console.log/group/error
+if (typeof console === 'undefined') {
+  globalThis.console = {
+    log: function() {},
+    warn: function() {},
+    error: function() {},
+    info: function() {},
+    debug: function() {},
+    group: function() {},
+    groupEnd: function() {},
+    trace: function() {},
+  };
+}
+
 var _lx = {
   _reqIdCounter: 0,
   _handlers: {},
