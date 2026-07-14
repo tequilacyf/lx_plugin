@@ -90,9 +90,9 @@ export function createSourceHandlers(sourceManager: SourceManager) {
 
   async function handleToggleSource(req: HTTPRequest): Promise<HTTPResponse> {
     try {
-      const body = decodeBody(req)
-      if (!body) return errorResponse('Empty request body')
-      const { id, enabled } = JSON.parse(body)
+      const q = parseQuery(req.query)
+      const id = q.id
+      const enabled = q.enabled === 'true' ? true : q.enabled === 'false' ? false : undefined
 
       if (!id) return errorResponse('id is required')
 

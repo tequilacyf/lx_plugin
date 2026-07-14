@@ -232,10 +232,7 @@
 
   async function toggleSource(id, enabled) {
     try {
-      await api('/api/sources/toggle', {
-        method: 'POST',
-        body: JSON.stringify({ id, enabled }),
-      });
+      await api('/api/sources/toggle?id=' + encodeURIComponent(id) + '&enabled=' + enabled);
       showToast(enabled ? '已启用' : '已禁用', 'success');
       loadSources();
     } catch (err) {

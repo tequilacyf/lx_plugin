@@ -208,7 +208,7 @@ export function registerRoutes(router: any, sourceManager: SourceManager, runtim
   router.get('/api/sources/import-url', sourceHandlers.handleImportUrl)
   router.post('/api/sources/import-zip', sourceHandlers.handleImportZip)
   router.delete('/api/sources', sourceHandlers.handleDeleteSource)
-  router.post('/api/sources/toggle', sourceHandlers.handleToggleSource)
+  router.get('/api/sources/toggle', sourceHandlers.handleToggleSource)
 
   // Songlist
   router.get('/api/songlist/tags', handleSonglistTags)
