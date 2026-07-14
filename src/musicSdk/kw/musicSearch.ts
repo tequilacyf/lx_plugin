@@ -29,8 +29,7 @@ async function ensureToken(): Promise<string> {
   }
 }
 
-const searchMusic = async (str: string, page: number, limit: number) => {
-  const token = await ensureToken()
+const searchMusic = (str: string, page: number, limit: number, token: string) => {
   const params = [
     'client=kt',
     `all=${encodeURIComponent(str)}`,
@@ -137,7 +136,8 @@ export const search = async (
 
   while (retryCount < maxRetry) {
     try {
-      const { body, statusCode } = await searchMusic(str, page, limit).promise
+      const token = await ensureToken()
+      const { body, statusCode } = await searchMusic(str, page, limit, token).promise
 
       if (statusCode !== 200) {
         throw new Error(`HTTP ${statusCode}`)
