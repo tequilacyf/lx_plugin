@@ -134,16 +134,43 @@ export class SourceManager {
   async batchImport(scripts: Array<{ script: string; filename?: string }>): Promise<void> {
     if (this.batchStatus.loading) return
 
+    // Step 1: Pre-persist all scripts synchronously (enabled=false)
+    const persistedIds: string[] = []
+    for (let i = 0; i < scripts.length; i++) {
+      const item = scripts[i]
+      try {
+        const result = await this.importScript(item.script, item.filename)
+        if (result.success && result.id) {
+          persistedIds.push(result.id)
+        } else {
+          this.batchStatus.batch_errors.push({
+            id: item.filename || `batch_${i}`,
+            error: result.error || 'Import failed',
+          })
+        }
+      } catch (err: any) {
+        this.batchStatus.batch_errors.push({
+          id: item.filename || `batch_${i}`,
+          error: err.message || String(err),
+        })
+      }
+    }
+
+    if (persistedIds.length === 0) {
+      this.batchStatus.loading = false
+      return
+    }
+
     this.batchStatus = {
       loading: true,
       batch_current_id: null,
-      batch_pending_ids: scripts.map((_, i) => `batch_${i}`),
-      batch_total: scripts.length,
+      batch_pending_ids: [...persistedIds],
+      batch_total: persistedIds.length,
       batch_completed: 0,
-      batch_errors: [],
+      batch_errors: [...this.batchStatus.batch_errors],
     }
 
-    // Process in background with setTimeout chain
+    // Step 2: Background chain to enable each source
     const processNext = async () => {
       if (this.batchStatus.batch_pending_ids.length === 0) {
         this.batchStatus.loading = false
@@ -151,23 +178,14 @@ export class SourceManager {
         return
       }
 
-      const idx = this.batchStatus.batch_total - this.batchStatus.batch_pending_ids.length
-      const item = scripts[idx]
-      this.batchStatus.batch_current_id = `batch_${idx}`
+      const id = this.batchStatus.batch_pending_ids[0]
+      this.batchStatus.batch_current_id = id
 
       try {
-        const result = await this.importScript(item.script, item.filename)
-        if (result.success && result.id) {
-          await this.enableSource(result.id)
-        } else {
-          this.batchStatus.batch_errors.push({
-            id: item.filename || `batch_${idx}`,
-            error: result.error || 'Unknown error',
-          })
-        }
+        await this.enableSource(id)
       } catch (err: any) {
         this.batchStatus.batch_errors.push({
-          id: item.filename || `batch_${idx}`,
+          id,
           error: err.message || String(err),
         })
       }

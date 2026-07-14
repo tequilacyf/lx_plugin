@@ -19,3 +19,16 @@ declare const zlib: {
   inflateRaw(data: Uint8Array | any): any
   deflateRaw(data: Uint8Array | any): any
 }
+
+// crypto is available as a host polyfill
+declare const crypto: {
+  md5(data: string): string
+  aesEncrypt(data: string, key: string, iv?: string): string
+  aesDecrypt(data: string, key: string, iv?: string): string
+  rsaEncrypt(data: string, key: string): string
+  randomBytes(size: number): Uint8Array
+}
+
+// Host-injected functions for jsenv sub-VMs
+declare function __go_send(name: string, data: string): void
+declare function __go_raw_inflate(hex: string): string

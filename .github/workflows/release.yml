@@ -1,0 +1,63 @@
+name: Release
+
+on:
+  workflow_dispatch:
+    inputs:
+      version:
+        description: 'Version tag (e.g. 1.0.0)'
+        required: false
+
+jobs:
+  build-and-release:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Determine version
+        id: version
+        run: |
+          if [ -n "${{ github.event.inputs.version }}" ]; then
+            VERSION="${{ github.event.inputs.version }}"
+          else
+            VERSION=$(date +'%Y.%m.%d')
+          fi
+          echo "version=$VERSION" >> "$GITHUB_OUTPUT"
+
+      - name: Build
+        run: npm run build
+
+      - name: Validate
+        run: npm run validate
+
+      - name: Update plugin.json with download_url
+        run: |
+          ZIP_NAME="lxmusic-${{ steps.version.outputs.version }}.jsplugin.zip"
+          DOWNLOAD_URL="https://github.com/${{ github.repository }}/releases/download/v${{ steps.version.outputs.version }}/$ZIP_NAME"
+          # Use node to update JSON
+          node -e "
+            const fs = require('fs');
+            const pkg = JSON.parse(fs.readFileSync('plugin.json', 'utf8'));
+            pkg.download_url = DOWNLOAD_URL;
+            pkg.version = '${{ steps.version.outputs.version }}';
+            fs.writeFileSync('plugin.json', JSON.stringify(pkg, null, 2));
+          "
+
+      - name: Create Release
+        uses: softprops/action-gh-release@v2
+        with:
+          tag_name: v${{ steps.version.outputs.version }}
+          name: v${{ steps.version.outputs.version }}
+          files: dist/lxmusic.jsplugin.zip
+          generate_release_notes: true

@@ -10,8 +10,11 @@ export async function handleLeaderboardBoards(req: HTTPRequest): Promise<HTTPRes
     const sdk = platforms[sourceId]
     if (!sdk || !sdk.leaderboard) return errorResponse(`Source ${sourceId} not found`)
 
-    const boards = sdk.leaderboard.boardList || []
-    return successResponse({ source: sourceId, list: boards })
+    // Call getBoards() method - all platforms export this as a method
+    const boards = await sdk.leaderboard.getBoards()
+    // Normalize: some return {source, list}, others return just the list
+    const list = Array.isArray(boards) ? boards : (boards?.list || boards || [])
+    return successResponse({ source: sourceId, list })
   } catch (err: any) {
     return errorResponse(err.message || String(err), 500)
   }
@@ -30,7 +33,16 @@ export async function handleLeaderboardList(req: HTTPRequest): Promise<HTTPRespo
     const sdk = platforms[sourceId]
     if (!sdk || !sdk.leaderboard) return errorResponse(`Source ${sourceId} not found`)
 
-    const result = await sdk.leaderboard.getList(id, page, limit)
+    // Platform method naming: kw/kg use getList, tx/wy/mg use getBoardDetail
+    let result
+    if (typeof sdk.leaderboard.getList === 'function') {
+      result = await sdk.leaderboard.getList(id, page, limit)
+    } else if (typeof sdk.leaderboard.getBoardDetail === 'function') {
+      result = await sdk.leaderboard.getBoardDetail(id, page, limit)
+    } else {
+      return errorResponse(`Source ${sourceId} has no leaderboard list method`)
+    }
+
     return successResponse(result)
   } catch (err: any) {
     return errorResponse(err.message || String(err), 500)

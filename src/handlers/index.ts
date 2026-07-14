@@ -1,7 +1,7 @@
 import type { HTTPRequest, HTTPResponse } from '@songloft/plugin-sdk'
 import { parseQuery, jsonResponse } from '@songloft/plugin-sdk'
 import { handleSearch, handleSearchTopOne } from './search'
-import { handleSonglistTags, handleSonglistList, handleSonglistSearch, handleSonglistDetail } from './songlist'
+import { handleSonglistTags, handleSonglistList, handleSonglistSearch, handleSonglistDetail, handleSonglistSorts } from './songlist'
 import { handleLeaderboardBoards, handleLeaderboardList } from './leaderboard'
 import { createSourceHandlers } from './source'
 import type { SourceManager } from '../source/manager'
@@ -179,6 +179,7 @@ export function registerRoutes(router: any, sourceManager: SourceManager, runtim
   router.get('/api/sources', sourceHandlers.handleGetSources)
   router.post('/api/sources/import', sourceHandlers.handleImportSource)
   router.post('/api/sources/import-url', sourceHandlers.handleImportUrl)
+  router.post('/api/sources/import-zip', sourceHandlers.handleImportZip)
   router.delete('/api/sources', sourceHandlers.handleDeleteSource)
   router.put('/api/sources/toggle', sourceHandlers.handleToggleSource)
 
@@ -187,6 +188,7 @@ export function registerRoutes(router: any, sourceManager: SourceManager, runtim
   router.get('/api/songlist/list', handleSonglistList)
   router.get('/api/songlist/search', handleSonglistSearch)
   router.get('/api/songlist/detail', handleSonglistDetail)
+  router.get('/api/songlist/sorts', handleSonglistSorts)
 
   // Leaderboard
   router.get('/api/leaderboard/boards', handleLeaderboardBoards)

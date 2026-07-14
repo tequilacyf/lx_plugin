@@ -49,6 +49,26 @@ var _lx = {
     } else if (options.form) {
       headers['Content-Type'] = 'application/x-www-form-urlencoded';
       body = _urlEncode(options.form);
+    } else if (options.formData) {
+      // Build multipart/form-data
+      var boundary = '----LxBoundary' + Date.now().toString(36);
+      headers['Content-Type'] = 'multipart/form-data; boundary=' + boundary;
+      var parts = [];
+      var fd = options.formData;
+      if (_isObject(fd) && !(fd instanceof ArrayBuffer)) {
+        for (var key in fd) {
+          if (fd.hasOwnProperty(key)) {
+            var val = fd[key];
+            if (val && typeof val === 'object' && val.content) {
+              // File-like: {content, filename, contentType}
+              parts.push('--' + boundary + '\r\nContent-Disposition: form-data; name="' + key + '"; filename="' + (val.filename || key) + '"\r\nContent-Type: ' + (val.contentType || 'application/octet-stream') + '\r\n\r\n' + val.content + '\r\n');
+            } else {
+              parts.push('--' + boundary + '\r\nContent-Disposition: form-data; name="' + key + '"\r\n\r\n' + String(val == null ? '' : val) + '\r\n');
+            }
+          }
+        }
+      }
+      body = parts.join('') + '--' + boundary + '--\r\n';
     }
 
     var controller = new AbortController();

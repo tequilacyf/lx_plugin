@@ -79,10 +79,12 @@ export class RuntimeManager {
     // executeParallel returns a single SongloftJSEnvParallelResult
     const parallelResult = await songloft.jsenv.executeParallel(calls, 3)
 
-    if (parallelResult.successIndex >= 0 && parallelResult.result) {
+    const winnerIndex = parallelResult.successIndex
+
+    if (winnerIndex >= 0 && parallelResult.result) {
       const result = parallelResult.result
       if (!result.error) {
-        const candidate = candidates[parallelResult.successIndex]
+        const candidate = candidates[winnerIndex]
         candidate.successCalls++
         candidate.totalCalls++
 
@@ -98,12 +100,15 @@ export class RuntimeManager {
             if (result.result.startsWith('http')) return { url: result.result, sourceId: candidate.id }
           }
         }
+        // URL parsing failed but dispatch succeeded — don't double-count this candidate
       }
     }
 
-    // All failed - update totalCalls for candidates
-    for (const c of candidates) {
-      c.totalCalls++
+    // Failed candidates: increment totalCalls only for those NOT already counted above
+    for (let i = 0; i < candidates.length; i++) {
+      if (i !== winnerIndex || !parallelResult.result || parallelResult.result.error) {
+        candidates[i].totalCalls++
+      }
     }
 
     return null
