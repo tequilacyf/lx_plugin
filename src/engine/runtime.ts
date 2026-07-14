@@ -29,6 +29,8 @@ export class SourceRuntime implements RuntimeInstance {
 
   private async _doInit(): Promise<boolean> {
     try {
+      // Ensure clean env: destroy stale one if any
+      try { await songloft.jsenv.destroy(this.envName) } catch {}
       await songloft.jsenv.create(this.envName, LX_PRELUDE_JS)
 
       const metaCode = `globalThis.lx.currentScriptInfo = ${JSON.stringify({
