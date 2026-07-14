@@ -20,11 +20,15 @@ async function ensureToken(): Promise<string> {
     }
     const token = matchToken(headers) || ''
     if (token) {
+      songloft?.log?.info(`[kw token] obtained token: ${token}`)
       kwTokenCache = token
       kwTokenExpiry = Date.now() + 600000
+    } else {
+      songloft?.log?.warn(`[kw token] no token in response headers, headers=${JSON.stringify(headers)}`)
     }
     return token
-  } catch {
+  } catch (err: any) {
+    songloft?.log?.warn(`[kw token] fetch failed: ${err?.message || err}`)
     return kwTokenCache || ''
   }
 }
@@ -140,6 +144,7 @@ export const search = async (
       const { body, statusCode } = await searchMusic(str, page, limit, token).promise
 
       if (statusCode !== 200) {
+        songloft?.log?.warn(`[kw search] HTTP ${statusCode}: ${typeof body === 'string' ? body.substring(0, 200) : JSON.stringify(body).substring(0, 200)}`)
         throw new Error(`HTTP ${statusCode}`)
       }
 
@@ -160,6 +165,10 @@ export const search = async (
         } catch (_) {
           // keep as is
         }
+      }
+
+      if (!rawData || !rawData.abslist) {
+        songloft?.log?.warn(`[kw search] no abslist in response, keys=${Object.keys(rawData || {}).join(',')}, body=${JSON.stringify(rawData).substring(0, 300)}`)
       }
 
       const total = parseInt(rawData.TOTAL || rawData.total || '0', 10)

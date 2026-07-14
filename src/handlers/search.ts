@@ -88,19 +88,22 @@ export function createSearchHandlers(runtimeManager: any) {
         .filter(pid => platforms[pid] || runtimeManager.hasPlatform(pid))
         .map(async (pid) => {
           try {
-            // Try source script search first
+            // Try built-in SDK first (Mechanism A per PROMPT.md)
+            const sdk = platforms[pid]
+            if (sdk?.musicSearch) {
+              const result = await sdk.musicSearch.search(keyword.trim(), page, page_size)
+              if (result && result.list && result.list.length > 0) {
+                return result.list.map((item: MusicSearchItem) => itemToSearchResult(pid, item, quality))
+              }
+            }
+            // Fallback to source script search (source scripts like 全豆要 may handle search)
             if (runtimeManager.hasPlatform(pid)) {
               const srcItems = await runtimeManager.search(pid, keyword.trim(), page, page_size)
               if (srcItems && srcItems.length > 0) {
                 return srcItems.map((item: any) => sourceItemToResult(pid, item, quality))
               }
             }
-            // Fallback to built-in SDK
-            const sdk = platforms[pid]
-            if (!sdk?.musicSearch) return []
-            const result = await sdk.musicSearch.search(keyword.trim(), page, page_size)
-            if (!result || !result.list) return []
-            return result.list.map((item: MusicSearchItem) => itemToSearchResult(pid, item, quality))
+            return []
           } catch (err: any) {
             songloft.log.warn(`[Search] Error searching ${pid}: ${err?.message || err}`)
             return []

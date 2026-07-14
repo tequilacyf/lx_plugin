@@ -114,7 +114,14 @@ export const search = async (str: string, page = 1, limit = 30) => {
     try {
       const { body, statusCode } = await searchMusic(str, page, limit).promise
 
-      if (statusCode !== 200) throw new Error(`HTTP ${statusCode}`)
+      if (statusCode !== 200) {
+        songloft?.log?.warn(`[tx search] HTTP ${statusCode}: ${typeof body === 'string' ? body.substring(0, 200) : JSON.stringify(body).substring(0, 200)}`)
+        throw new Error(`HTTP ${statusCode}`)
+      }
+
+      if (!body?.req?.data?.body?.song?.list) {
+        songloft?.log?.warn(`[tx search] unexpected response structure, keys=${Object.keys(body || {}).join(',')}, body=${JSON.stringify(body).substring(0, 400)}`)
+      }
 
       const total = body?.req?.data?.body?.song?.totalNum || 0
       const allPage = Math.ceil(total / limit)
