@@ -25,10 +25,20 @@
   async function api(path, options = {}) {
     try {
       const url = path.startsWith('/') ? API_BASE + path : path;
-      const resp = await fetch(url, {
+      const fetchOpts = {
         headers: { 'Content-Type': 'application/json' },
         ...options,
-      });
+      };
+      // Songloft host hex-decodes POST bodies internally; hex-encode to avoid corruption
+      if (fetchOpts.body && fetchOpts.method === 'POST') {
+        const enc = new TextEncoder();
+        const bytes = enc.encode(fetchOpts.body);
+        let hex = '';
+        for (let i = 0; i < bytes.length; i++) hex += bytes[i].toString(16).padStart(2, '0');
+        fetchOpts.body = hex;
+        fetchOpts.headers['Content-Type'] = 'text/plain';
+      }
+      const resp = await fetch(url, fetchOpts);
       const data = await resp.json();
       return data;
     } catch (err) {

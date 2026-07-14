@@ -1,6 +1,6 @@
 import type { HTTPRequest, HTTPResponse } from '@songloft/plugin-sdk'
 import { parseQuery } from '@songloft/plugin-sdk'
-import { errorResponse, successResponse } from './response'
+import { errorResponse, successResponse, decodeBody } from './response'
 import type { SourceManager } from '../source/manager'
 
 export function createSourceHandlers(sourceManager: SourceManager) {
@@ -16,9 +16,8 @@ export function createSourceHandlers(sourceManager: SourceManager) {
 
   async function handleImportSource(req: HTTPRequest): Promise<HTTPResponse> {
     try {
-      if (!req.body || req.body.length === 0) return errorResponse('Empty request body')
-      const body = new TextDecoder().decode(req.body)
-      if (!body || !body.trim()) return errorResponse('Empty request body')
+      const body = decodeBody(req)
+      if (!body) return errorResponse('Empty request body')
       const { script, filename } = JSON.parse(body)
 
       if (!script) return errorResponse('script is required')
@@ -37,9 +36,8 @@ export function createSourceHandlers(sourceManager: SourceManager) {
   async function handleImportUrl(req: HTTPRequest): Promise<HTTPResponse> {
     let url = ''
     try {
-      if (!req.body || req.body.length === 0) return errorResponse('Empty request body')
-      const body = new TextDecoder().decode(req.body)
-      if (!body || !body.trim()) return errorResponse('Empty request body')
+      const body = decodeBody(req)
+      if (!body) return errorResponse('Empty request body')
       const parsed = JSON.parse(body)
       url = parsed.url
 
@@ -88,7 +86,8 @@ export function createSourceHandlers(sourceManager: SourceManager) {
 
   async function handleToggleSource(req: HTTPRequest): Promise<HTTPResponse> {
     try {
-      const body = new TextDecoder().decode(req.body || new Uint8Array(0))
+      const body = decodeBody(req)
+      if (!body) return errorResponse('Empty request body')
       const { id, enabled } = JSON.parse(body)
 
       if (!id) return errorResponse('id is required')

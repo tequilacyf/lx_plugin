@@ -7,7 +7,7 @@ import { createSourceHandlers } from './source'
 import type { SourceManager } from '../source/manager'
 import type { RuntimeManager } from '../engine/manager'
 import { platforms, sources } from '../musicSdk'
-import { errorResponse, successResponse } from './response'
+import { errorResponse, successResponse, decodeBody } from './response'
 
 export function registerRoutes(router: any, sourceManager: SourceManager, runtimeManager: RuntimeManager) {
   const sourceHandlers = createSourceHandlers(sourceManager)
@@ -68,8 +68,9 @@ export function registerRoutes(router: any, sourceManager: SourceManager, runtim
   // Direct music URL
   router.post('/api/direct/music/url', async (req: HTTPRequest): Promise<HTTPResponse> => {
     try {
-      const body = JSON.parse(new TextDecoder().decode(req.body || new Uint8Array(0)))
-      const { songInfo, quality = '320k' } = body
+      const body = decodeBody(req)
+      if (!body) return errorResponse('Empty request body')
+      const { songInfo, quality = '320k' } = JSON.parse(body)
 
       if (!songInfo || !songInfo.source) return errorResponse('songInfo with source is required')
 
@@ -105,8 +106,9 @@ export function registerRoutes(router: any, sourceManager: SourceManager, runtim
   // Song import to library
   router.post('/api/songs/import', async (req: HTTPRequest): Promise<HTTPResponse> => {
     try {
-      const body = JSON.parse(new TextDecoder().decode(req.body || new Uint8Array(0)))
-      const { songs, playlist_id } = body
+      const body = decodeBody(req)
+      if (!body) return errorResponse('Empty request body')
+      const { songs, playlist_id } = JSON.parse(body)
 
       if (!songs || !Array.isArray(songs) || songs.length === 0) {
         return errorResponse('songs array is required')

@@ -2,7 +2,7 @@ import { platforms, sources } from '../musicSdk'
 import type { HTTPRequest, HTTPResponse, SearchResultItem } from '@songloft/plugin-sdk'
 import { jsonResponse } from '@songloft/plugin-sdk'
 import type { MusicSearchItem } from '../types'
-import { errorResponse } from './response'
+import { errorResponse, decodeBody } from './response'
 
 interface SearchBody {
   keyword: string
@@ -53,7 +53,9 @@ function parseInterval(interval: string): number {
 
 export async function handleSearch(req: HTTPRequest): Promise<HTTPResponse> {
   try {
-    const body: SearchBody = JSON.parse(new TextDecoder().decode(req.body || new Uint8Array(0)))
+    const raw = decodeBody(req)
+    if (!raw) return errorResponse('Empty request body')
+    const body: SearchBody = JSON.parse(raw)
     const { keyword, source_id, quality = '320k', page = 1, page_size = 30 } = body
 
     if (!keyword || !keyword.trim()) {
@@ -89,8 +91,9 @@ export async function handleSearch(req: HTTPRequest): Promise<HTTPResponse> {
 
 export async function handleSearchTopOne(req: HTTPRequest): Promise<HTTPResponse> {
   try {
-    const body = JSON.parse(new TextDecoder().decode(req.body || new Uint8Array(0)))
-    const { keyword, source_id, quality = '320k' } = body
+    const raw = decodeBody(req)
+    if (!raw) return errorResponse('Empty request body')
+    const { keyword, source_id, quality = '320k' } = JSON.parse(raw)
 
     if (!keyword) return errorResponse('keyword is required')
 
