@@ -1,6 +1,6 @@
 import type { HTTPRequest, HTTPResponse, FallbackMatch, MusicUrlFallbackHint, ResolvedMusicUrl } from '@songloft/plugin-sdk'
 import { parseQuery, jsonResponse, createMusicUrlHandler } from '@songloft/plugin-sdk'
-import { handleSearch, handleSearchTopOne } from './search'
+import { createSearchHandlers } from './search'
 import { handleSonglistTags, handleSonglistList, handleSonglistSearch, handleSonglistDetail, handleSonglistSorts } from './songlist'
 import { handleLeaderboardBoards, handleLeaderboardList } from './leaderboard'
 import { createSourceHandlers } from './source'
@@ -14,10 +14,11 @@ export function registerRoutes(router: any, sourceManager: SourceManager, runtim
 
   // Search (manual: SDK createSearchHandler doesn't support source_id/quality)
   // Register both POST and GET to avoid host hex-decode issue
-  router.post('/api/search', handleSearch)
-  router.get('/api/search', handleSearch)
-  router.post('/api/search/topone', handleSearchTopOne)
-  router.get('/api/search/topone', handleSearchTopOne)
+  const searchHandlers = createSearchHandlers(runtimeManager)
+  router.post('/api/search', searchHandlers.handleSearch)
+  router.get('/api/search', searchHandlers.handleSearch)
+  router.post('/api/search/topone', searchHandlers.handleSearchTopOne)
+  router.get('/api/search/topone', searchHandlers.handleSearchTopOne)
 
   // Music URL resolution — use SDK factory for contract compliance
   router.post('/api/music/url', createMusicUrlHandler({
@@ -36,31 +37,39 @@ export function registerRoutes(router: any, sourceManager: SourceManager, runtim
 
     async fallbackSearch(hint: MusicUrlFallbackHint): Promise<FallbackMatch | null> {
       if (!hint.enabled) return null
-      // Cross-platform search: try all platforms for the best match
       const searchQuery = `${hint.title} ${hint.artist}`.trim()
       if (!searchQuery) return null
 
-      for (const [pid, sdk] of Object.entries(platforms)) {
+      const allPlatforms = [...new Set([...Object.keys(platforms), ...runtimeManager.getSupportedPlatforms()])]
+      for (const pid of allPlatforms) {
         try {
-          if (!sdk?.musicSearch?.search) continue
-          const result = await sdk.musicSearch.search(searchQuery, 1, 5)
-          if (!result?.list?.length) continue
-          const item = result.list[0]
+          let items: any[] = []
+          // Try source script
+          if (runtimeManager.hasPlatform(pid)) {
+            items = await runtimeManager.search(pid, searchQuery, 1, 5)
+          }
+          // Fallback to built-in SDK
+          if (!items?.length && platforms[pid]?.musicSearch?.search) {
+            const result = await platforms[pid].musicSearch.search(searchQuery, 1, 5)
+            if (result?.list?.length) items = result.list
+          }
+          if (!items?.length) continue
+          const item = items[0]
           return {
             source_data: {
               platform: pid,
               quality: '320k',
               songInfo: {
-                name: item.name,
-                singer: item.singer,
-                songmid: item.songmid,
+                name: item.name || item.title,
+                singer: item.singer || item.artist,
+                songmid: item.songmid || item.id,
                 hash: item.hash || '',
                 copyrightId: item.copyrightId || '',
                 source: pid,
               },
             },
-            title: item.name,
-            artist: item.singer,
+            title: item.name || item.title,
+            artist: item.singer || item.artist,
           }
         } catch { /* try next platform */ }
       }

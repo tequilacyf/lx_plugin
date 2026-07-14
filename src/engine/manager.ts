@@ -87,6 +87,35 @@ export class RuntimeManager {
     return null
   }
 
+  async search(platform: string, keyword: string, page: number, pageSize: number): Promise<any[]> {
+    const runtimes = this.getRuntimesForPlatform(platform)
+    if (runtimes.length === 0) return []
+
+    const results = await Promise.all(
+      runtimes.map(async (rt) => {
+        try {
+          return await rt.search(platform, keyword, page, pageSize)
+        } catch {
+          return null
+        }
+      }),
+    )
+
+    const allItems: any[] = []
+    const seen = new Set<string>()
+    for (const r of results) {
+      if (!r || !r.list) continue
+      for (const item of r.list) {
+        const key = item.songmid || item.name + item.singer
+        if (!seen.has(key)) {
+          seen.add(key)
+          allItems.push(item)
+        }
+      }
+    }
+    return allItems
+  }
+
   hasPlatform(platform: string): boolean {
     return this.platformIndex.has(platform) && this.platformIndex.get(platform)!.length > 0
   }

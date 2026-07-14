@@ -71,67 +71,107 @@ function parseInterval(interval: string): number {
   return 0
 }
 
-export async function handleSearch(req: HTTPRequest): Promise<HTTPResponse> {
-  try {
-    const body = parseSearchBody(req)
-    const { keyword, source_id, quality = '320k', page = 1, page_size = 30 } = body
+export function createSearchHandlers(runtimeManager: any) {
+  async function handleSearch(req: HTTPRequest): Promise<HTTPResponse> {
+    try {
+      const body = parseSearchBody(req)
+      const { keyword, source_id, quality = '320k', page = 1, page_size = 30 } = body
 
-    if (!keyword || !keyword.trim()) {
-      return errorResponse('keyword is required')
+      if (!keyword || !keyword.trim()) {
+        return errorResponse('keyword is required')
+      }
+
+      const platformsToSearch = source_id ? [source_id] : sources.map(s => s.id)
+      const allResults: SearchResultItem[] = []
+
+      const searchTasks = platformsToSearch
+        .filter(pid => platforms[pid] || runtimeManager.hasPlatform(pid))
+        .map(async (pid) => {
+          try {
+            // Try source script search first
+            if (runtimeManager.hasPlatform(pid)) {
+              const srcItems = await runtimeManager.search(pid, keyword.trim(), page, page_size)
+              if (srcItems && srcItems.length > 0) {
+                return srcItems.map((item: any) => sourceItemToResult(pid, item, quality))
+              }
+            }
+            // Fallback to built-in SDK
+            const sdk = platforms[pid]
+            if (!sdk?.musicSearch) return []
+            const result = await sdk.musicSearch.search(keyword.trim(), page, page_size)
+            if (!result || !result.list) return []
+            return result.list.map((item: MusicSearchItem) => itemToSearchResult(pid, item, quality))
+          } catch (err: any) {
+            songloft.log.warn(`[Search] Error searching ${pid}: ${err?.message || err}`)
+            return []
+          }
+        })
+
+      const results = await Promise.all(searchTasks)
+      for (const r of results) allResults.push(...r)
+
+      return jsonResponse({ results: allResults })
+    } catch (err: any) {
+      return errorResponse(err.message || String(err), 500)
     }
+  }
 
-    const platformsToSearch = source_id ? [source_id] : sources.map(s => s.id)
-    const allResults: SearchResultItem[] = []
+  function sourceItemToResult(platform: string, item: any, quality: string): SearchResultItem {
+    const info = {
+      name: item.name || item.title || '',
+      singer: item.singer || item.artist || '',
+      songmid: item.songmid || item.id || item.musicId || '',
+      albumId: item.albumId || (item.album ? item.album.id : '') || '',
+      albumName: item.albumName || item.album || '',
+      hash: item.hash || '',
+      copyrightId: item.copyrightId || '',
+      strMediaMid: item.strMediaMid || '',
+      albumMid: item.albumMid || '',
+      source: platform,
+    }
+    return {
+      title: info.name,
+      artist: info.singer,
+      album: info.albumName,
+      duration: typeof item.duration === 'number' ? item.duration
+        : typeof item.interval === 'number' ? item.interval
+        : parseInterval(item.interval || item.durationText || '') || 0,
+      cover_url: item.img || item.cover || item.cover_url || undefined,
+      source_data: { platform, quality, songInfo: info },
+    }
+  }
 
-    const searchTasks = platformsToSearch
-      .filter(pid => platforms[pid])
-      .map(async (pid) => {
-        try {
-          const sdk = platforms[pid]
-          if (!sdk.musicSearch) return []
-          const result = await sdk.musicSearch.search(keyword.trim(), page, page_size)
-          if (!result || !result.list) return []
-          return result.list.map((item: MusicSearchItem) => itemToSearchResult(pid, item, quality))
-        } catch (err: any) {
-          songloft.log.warn(`[Search] Error searching ${pid}: ${err?.message || err}`)
-          return []
-        }
+  async function handleSearchTopOne(req: HTTPRequest): Promise<HTTPResponse> {
+    try {
+      const body = parseSearchBody(req)
+      const { keyword, source_id, quality = '320k' } = body
+
+      if (!keyword) return errorResponse('keyword is required')
+
+      const searchResult = await handleSearch({
+        ...req,
+        body: new TextEncoder().encode(JSON.stringify({
+          keyword,
+          source_id,
+          quality,
+          page: 1,
+          page_size: 5,
+        })),
       })
 
-    const results = await Promise.all(searchTasks)
-    for (const r of results) allResults.push(...r)
+      const searchData = JSON.parse(searchResult.body as string)
+      if (!searchData.results || searchData.results.length === 0) {
+        return errorResponse('No results found')
+      }
 
-    return jsonResponse({ results: allResults })
-  } catch (err: any) {
-    return errorResponse(err.message || String(err), 500)
-  }
-}
-
-export async function handleSearchTopOne(req: HTTPRequest): Promise<HTTPResponse> {
-  try {
-    const body = parseSearchBody(req)
-    const { keyword, source_id, quality = '320k' } = body
-
-    if (!keyword) return errorResponse('keyword is required')
-
-    const searchResult = await handleSearch({
-      ...req,
-      body: new TextEncoder().encode(JSON.stringify({
-        keyword,
-        source_id,
-        quality,
-        page: 1,
-        page_size: 5,
-      })),
-    })
-
-    const searchData = JSON.parse(searchResult.body as string)
-    if (!searchData.results || searchData.results.length === 0) {
-      return errorResponse('No results found')
+      return jsonResponse({ results: searchData.results.slice(0, 1) })
+    } catch (err: any) {
+      return errorResponse(err.message || String(err), 500)
     }
-
-    return jsonResponse({ results: searchData.results.slice(0, 1) })
-  } catch (err: any) {
-    return errorResponse(err.message || String(err), 500)
   }
+
+  return { handleSearch, handleSearchTopOne }
 }
+
+// Re-export for non-runtime-manager fallback (songlist.ts / fallbackSearch still uses old SDK)
+export { createSearchHandlers as createSearchHandlersType }

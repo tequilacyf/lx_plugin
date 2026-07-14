@@ -146,6 +146,46 @@ export class SourceRuntime implements RuntimeInstance {
     }
   }
 
+  async search(platform: string, keyword: string, page: number, pageSize = 30): Promise<any> {
+    if (!this.ready) return null
+    this.totalCalls++
+
+    const reqId = ++dispatchIdCounter
+    const dispatchData = {
+      source: platform,
+      action: 'musicSearch',
+      info: { keyword, page, pageSize },
+    }
+
+    try {
+      const result = await songloft.jsenv.executeWait(
+        this.envName,
+        `lx._dispatch(${reqId}, "request", ${JSON.stringify(JSON.stringify(dispatchData))});`,
+        30000,
+        ['lx_dispatchResult', 'lx_dispatchError'],
+      )
+
+      if (result.error) return null
+
+      if (result.events) {
+        for (const evt of result.events) {
+          if (evt.name === 'lx_dispatchResult') {
+            try {
+              const data = JSON.parse(evt.data)
+              if (data.id === reqId) {
+                this.successCalls++
+                return data.result
+              }
+            } catch (e) { /* ignore */ }
+          }
+        }
+      }
+      return null
+    } catch (err) {
+      return null
+    }
+  }
+
   async destroy(): Promise<void> {
     this.ready = false
     this.sources = null

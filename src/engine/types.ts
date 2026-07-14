@@ -25,6 +25,7 @@ export interface RuntimeInstance {
   successCalls: number
   totalCalls: number
   getMusicUrl(platform: string, songInfo: any, quality: string): Promise<string | null>
+  search(platform: string, keyword: string, page: number, pageSize: number): Promise<any>
 }
 
 export interface DispatchResult {
