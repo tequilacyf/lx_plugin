@@ -1,6 +1,6 @@
 import { platforms, sources } from '../musicSdk'
 import type { HTTPRequest, HTTPResponse, SearchResultItem } from '@songloft/plugin-sdk'
-import { jsonResponse } from '@songloft/plugin-sdk'
+import { jsonResponse, parseQuery } from '@songloft/plugin-sdk'
 import type { MusicSearchItem } from '../types'
 import { errorResponse, decodeBody } from './response'
 
@@ -10,6 +10,26 @@ interface SearchBody {
   quality?: string
   page?: number
   page_size?: number
+}
+
+function parseSearchBody(req: HTTPRequest): SearchBody {
+  // Try query params first (GET) to avoid host hex-decode POST body issue
+  const q = parseQuery(req.query)
+  const out: SearchBody = { keyword: '' }
+  if (q.keyword) {
+    out.keyword = q.keyword
+    if (q.source_id) out.source_id = q.source_id
+    if (q.quality) out.quality = q.quality
+    if (q.page) out.page = parseInt(q.page) || 1
+    if (q.page_size) out.page_size = parseInt(q.page_size) || 30
+    return out
+  }
+  // Fallback to POST body
+  const raw = decodeBody(req)
+  if (raw) {
+    try { return JSON.parse(raw) } catch {}
+  }
+  return out
 }
 
 function songInfoToSourceData(platform: string, item: MusicSearchItem, quality: string): Record<string, unknown> {
@@ -53,9 +73,7 @@ function parseInterval(interval: string): number {
 
 export async function handleSearch(req: HTTPRequest): Promise<HTTPResponse> {
   try {
-    const raw = decodeBody(req)
-    if (!raw) return errorResponse('Empty request body')
-    const body: SearchBody = JSON.parse(raw)
+    const body = parseSearchBody(req)
     const { keyword, source_id, quality = '320k', page = 1, page_size = 30 } = body
 
     if (!keyword || !keyword.trim()) {
@@ -91,9 +109,8 @@ export async function handleSearch(req: HTTPRequest): Promise<HTTPResponse> {
 
 export async function handleSearchTopOne(req: HTTPRequest): Promise<HTTPResponse> {
   try {
-    const raw = decodeBody(req)
-    if (!raw) return errorResponse('Empty request body')
-    const { keyword, source_id, quality = '320k' } = JSON.parse(raw)
+    const body = parseSearchBody(req)
+    const { keyword, source_id, quality = '320k' } = body
 
     if (!keyword) return errorResponse('keyword is required')
 

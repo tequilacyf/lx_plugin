@@ -63,16 +63,13 @@
     $('#search-results').innerHTML = '<div class="loading">搜索中...</div>';
     
     try {
-      const data = await api('/api/search', {
-        method: 'POST',
-        body: JSON.stringify({
-          keyword,
-          source_id: sourceId || undefined,
-          quality,
-          page,
-          page_size: 30,
-        }),
-      });
+      const params = new URLSearchParams();
+      params.append('keyword', keyword);
+      if (sourceId) params.append('source_id', sourceId);
+      if (quality !== '320k') params.append('quality', quality);
+      params.append('page', String(page));
+      params.append('page_size', '30');
+      const data = await api('/api/search?' + params.toString());
       
       if (data.results && data.results.length > 0) {
         renderSearchResults(data.results);
