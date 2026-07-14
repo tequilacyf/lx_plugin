@@ -92,8 +92,8 @@ export async function handleSearch(req: HTTPRequest): Promise<HTTPResponse> {
           const result = await sdk.musicSearch.search(keyword.trim(), page, page_size)
           if (!result || !result.list) return []
           return result.list.map((item: MusicSearchItem) => itemToSearchResult(pid, item, quality))
-        } catch (err) {
-          songloft.log.warn(`[Search] Error searching ${pid}`)
+        } catch (err: any) {
+          songloft.log.warn(`[Search] Error searching ${pid}: ${err?.message || err}`)
           return []
         }
       })
