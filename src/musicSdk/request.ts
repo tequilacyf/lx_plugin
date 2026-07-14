@@ -76,18 +76,26 @@ export const httpFetch = (url: string, options: HttpFetchOptions = { method: 'ge
       clearTimeout(timeoutId)
       if (timedOut) throw new Error('Request timeout')
 
-      const rawText = await resp.text()
+      const statusCode = typeof resp.status === 'number' ? resp.status : 0
+
+      let rawText = ''
+      try { rawText = await resp.text() } catch (_e) { rawText = '' }
+
       let body: any = rawText
-      try {
-        body = JSON.parse(rawText)
-      } catch (_) {
-        // keep as text
-      }
+      try { body = JSON.parse(rawText) } catch (_) { /* keep as text */ }
 
       const respHeaders: Record<string, string> = {}
-      resp.headers.forEach((v, k) => { respHeaders[k] = v })
+      try {
+        if (resp.headers && typeof resp.headers.forEach === 'function') {
+          resp.headers.forEach((v: string, k: string) => { respHeaders[k] = v })
+        } else if (resp.headers && typeof resp.headers === 'object') {
+          for (const k of Object.keys(resp.headers)) {
+            respHeaders[k] = String(resp.headers[k])
+          }
+        }
+      } catch (_e) { /* best effort */ }
 
-      return { statusCode: resp.status, headers: respHeaders, body, raw: rawText }
+      return { statusCode, headers: respHeaders, body, raw: rawText }
     } catch (err: any) {
       clearTimeout(timeoutId)
       if (isCancelled) throw new Error('Request cancelled')
