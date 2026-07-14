@@ -38,10 +38,11 @@ export class SourceManager {
       // Strip UTF-8 BOM and normalize
       let cleanScript = script
       if (cleanScript.charCodeAt(0) === 0xFEFF) cleanScript = cleanScript.slice(1)
-      // Also strip any leading non-ASCII junk
+      // Also strip any leading control characters
       while (cleanScript.length > 0 && cleanScript.charCodeAt(0) < 32 && cleanScript.charCodeAt(0) !== 10 && cleanScript.charCodeAt(0) !== 13) {
         cleanScript = cleanScript.slice(1)
       }
+      songloft.log.info(`[importScript] len=${cleanScript.length} start="${cleanScript.substring(0, 80)}"`)
       const { metadata, rawScript } = parseSourceScript(cleanScript, filename?.replace(/\.\w+$/, ''))
 
       if (!metadata.name) {
