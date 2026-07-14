@@ -33,15 +33,29 @@ export function createSourceHandlers(sourceManager: SourceManager) {
   }
 
   async function handleImportUrl(req: HTTPRequest): Promise<HTTPResponse> {
+    let url = ''
     try {
       const body = new TextDecoder().decode(req.body || new Uint8Array(0))
-      const { url } = JSON.parse(body)
+      const parsed = JSON.parse(body)
+      url = parsed.url
 
       if (!url) return errorResponse('url is required')
 
-      const resp = await fetch(url)
-      if (!resp.ok) return errorResponse(`Failed to fetch: ${resp.status}`)
+      songloft.log.info(`[import-url] Fetching source from: ${url}`)
+
+      const resp = await fetch(url, {
+        headers: {
+          'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36',
+        },
+      })
+      if (!resp.ok) return errorResponse(`Failed to fetch source script: HTTP ${resp.status} ${resp.statusText}`)
+
       const script = await resp.text()
+      if (!script || script.trim().length === 0) {
+        return errorResponse('Fetched script is empty')
+      }
+
+      songloft.log.info(`[import-url] Fetched ${script.length} bytes from ${url}`)
 
       const result = await sourceManager.importScript(script, url.split('/').pop())
       if (!result.success) {
@@ -50,6 +64,7 @@ export function createSourceHandlers(sourceManager: SourceManager) {
 
       return successResponse({ id: result.id, name: result.name })
     } catch (err: any) {
+      songloft.log.error(`[import-url] Error importing from ${url}: ${err.message || err}`)
       return errorResponse(err.message || String(err), 500)
     }
   }
