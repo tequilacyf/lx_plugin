@@ -84,6 +84,17 @@ fs.unlinkSync(zipPath);
 // Rebuild zip
 execSync(`powershell -Command "Compress-Archive -Path '${tmpDir}\\*' -DestinationPath '${zipPath}' -Force"`);
 
+// Update plugin.json with new zipHash
+const crypto = require('crypto');
+const zipData = fs.readFileSync(zipPath);
+const newZipHash = crypto.createHash('sha256').update(zipData).digest('hex');
+const pluginJsonPath = path.join(__dirname, '..', 'plugin.json');
+if (fs.existsSync(pluginJsonPath)) {
+  const pkg = JSON.parse(fs.readFileSync(pluginJsonPath, 'utf8'));
+  pkg.zipHash = newZipHash;
+  fs.writeFileSync(pluginJsonPath, JSON.stringify(pkg, null, 2) + '\n');
+}
+
 // Clean tmp
 fs.rmSync(tmpDir, { recursive: true, force: true });
 
