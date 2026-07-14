@@ -205,7 +205,7 @@ export function registerRoutes(router: any, sourceManager: SourceManager, runtim
   // Source management
   router.get('/api/sources', sourceHandlers.handleGetSources)
   router.post('/api/sources/import', sourceHandlers.handleImportSource)
-  router.post('/api/sources/import-url', sourceHandlers.handleImportUrl)
+  router.get('/api/sources/import-url', sourceHandlers.handleImportUrl)
   router.post('/api/sources/import-zip', sourceHandlers.handleImportZip)
   router.delete('/api/sources', sourceHandlers.handleDeleteSource)
   router.put('/api/sources/toggle', sourceHandlers.handleToggleSource)
