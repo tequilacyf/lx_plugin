@@ -275,10 +275,10 @@
     for (const file of files) {
       try {
         const text = await file.text();
-        const data = await api('/api/sources/import', {
-          method: 'POST',
-          body: JSON.stringify({ script: text, filename: file.name }),
-        });
+        const params = new URLSearchParams();
+        params.append('script', text);
+        params.append('filename', file.name);
+        const data = await api('/api/sources/import?' + params.toString());
         
         if (data.code === 0) {
           showToast('导入成功: ' + (data.data?.name || file.name), 'success');

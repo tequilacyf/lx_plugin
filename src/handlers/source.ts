@@ -16,9 +16,21 @@ export function createSourceHandlers(sourceManager: SourceManager) {
 
   async function handleImportSource(req: HTTPRequest): Promise<HTTPResponse> {
     try {
-      const body = decodeBody(req)
-      if (!body) return errorResponse('Empty request body')
-      const { script, filename } = JSON.parse(body)
+      // Accept both GET (query) and POST (body) to avoid host hex-decoding POST bodies
+      const q = parseQuery(req.query)
+      let script = q.script || ''
+      let filename = q.filename || 'source.js'
+
+      if (!script && req.body && req.body.length > 0) {
+        const body = decodeBody(req)
+        if (body) {
+          try {
+            const parsed = JSON.parse(body)
+            script = parsed.script || ''
+            filename = parsed.filename || filename
+          } catch {}
+        }
+      }
 
       if (!script) return errorResponse('script is required')
 
