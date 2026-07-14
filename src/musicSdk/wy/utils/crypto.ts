@@ -1,5 +1,20 @@
 const base62 = 'abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789'
 
+const BASE64_CHARS = 'ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789+/'
+function base64Encode(bytes: Uint8Array | number[]): string {
+  let result = ''
+  for (let i = 0; i < bytes.length; i += 3) {
+    const a = bytes[i]
+    const b = i + 1 < bytes.length ? bytes[i + 1] : 0
+    const c = i + 2 < bytes.length ? bytes[i + 2] : 0
+    result += BASE64_CHARS[a >> 2]
+    result += BASE64_CHARS[((a & 3) << 4) | (b >> 4)]
+    result += i + 1 < bytes.length ? BASE64_CHARS[((b & 15) << 2) | (c >> 6)] : '='
+    result += i + 2 < bytes.length ? BASE64_CHARS[c & 63] : '='
+  }
+  return result
+}
+
 function randomBase62(length: number): string {
   let result = ''
   for (let i = 0; i < length; i++) {
@@ -12,17 +27,51 @@ function randomBase62(length: number): string {
 function toHexStr(buf: any): string {
   if (typeof buf === 'string' && /^[0-9a-fA-F]+$/.test(buf)) return buf
   if (buf?._hex) return buf._hex
-  if (buf?.toString) return buf.toString('hex')
+  if (buf?.toString) {
+    const s = buf.toString('hex')
+    if (/^[0-9a-fA-F]+$/.test(s)) return s
+  }
+  // Handle Uint8Array-like objects
+  if (buf && typeof buf.length === 'number') {
+    let hex = ''
+    for (let i = 0; i < buf.length; i++) {
+      const b = buf[i]
+      if (typeof b !== 'number') break
+      hex += b.toString(16).padStart(2, '0')
+    }
+    if (hex) return hex
+  }
   return String(buf)
 }
 
 // Host crypto returns Buffer-like objects; safely get base64 string
+function hexToBase64(hex: string): string {
+  const bytes: number[] = []
+  for (let i = 0; i < hex.length - 1; i += 2) {
+    bytes.push(parseInt(hex.substring(i, i + 2), 16))
+  }
+  return base64Encode(bytes)
+}
+
 function toBase64Str(buf: any): string {
   if (typeof buf === 'string') {
     if (/^[A-Za-z0-9+/=]+$/.test(buf) && buf.length % 4 === 0) return buf
-    return Buffer.from(buf, 'hex').toString('base64')
+    if (/^[0-9a-fA-F]+$/.test(buf)) return hexToBase64(buf)
   }
-  if (buf?.toString) return buf.toString('base64')
+  if (buf?.toString) {
+    const s = buf.toString('base64')
+    if (s && s !== '[object Uint8Array]') return s
+  }
+  // Handle Uint8Array-like: convert to base64
+  if (buf && typeof buf.length === 'number') {
+    const arr: number[] = []
+    for (let i = 0; i < buf.length; i++) {
+      const b = buf[i]
+      if (typeof b !== 'number') break
+      arr.push(b)
+    }
+    if (arr.length) return base64Encode(arr)
+  }
   return String(buf)
 }
 
