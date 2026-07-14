@@ -205,6 +205,7 @@ export function registerRoutes(router: any, sourceManager: SourceManager, runtim
   // Source management
   router.get('/api/sources', sourceHandlers.handleGetSources)
   router.post('/api/sources/import', sourceHandlers.handleImportSource)
+  router.get('/api/sources/import', sourceHandlers.handleImportSource)
   // Register both POST (per PROMPT.md) and GET (avoid host hex-decode issue)
   router.post('/api/sources/import-url', sourceHandlers.handleImportUrl)
   router.get('/api/sources/import-url', sourceHandlers.handleImportUrl)
