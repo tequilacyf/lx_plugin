@@ -1,6 +1,6 @@
 import { toMD5 } from '../crypto-shim'
 import { formatPlayTime, sizeFormate } from '../utils'
-import { createHttpFetch } from './utils'
+import { httpFetch } from '../request'
 
 const signatureMd5 = 'd94df31343ee67a541a4b5e5fbcb24af'
 const yyapp2d = 'yyapp2'
@@ -62,41 +62,79 @@ const mapSongItem = (item: any) => {
 export const search = async (str: string, page = 1, limit = 30) => {
   const time = Date.now().toString()
   const sign = createSignature(time, str)
+  const deviceId = 'b342f710a1e1c62b'
 
   try {
-    const body = await createHttpFetch(
-      'https://jadeite.migu.cn/music_search/v3/search/searchAll',
-      {
-        method: 'post',
-        headers: {
-          'Content-Type': 'application/x-www-form-urlencoded',
-          sign,
-          deviceId: 'b342f710a1e1c62b',
-          timestamp: time,
-          appkey: yyapp2d,
+    // Try JSON body first (newer API), fallback to form-urlencoded
+    let body: any
+    try {
+      body = await httpFetch(
+        'https://jadeite.migu.cn/music_search/v3/search/searchAll',
+        {
+          method: 'post',
+          headers: {
+            'Content-Type': 'application/json',
+            sign,
+            deviceId,
+            timestamp: time,
+            appkey: yyapp2d,
+            Referer: 'https://music.migu.cn/',
+            'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36',
+          },
+          body: {
+            text: str,
+            pageIndex: page,
+            pageSize: limit,
+            type: '1',
+          },
         },
-        form: {
-          text: str,
-          pageIndex: page,
-          pageSize: limit,
-          type: '1',
+      ).promise
+    } catch {
+      // Fallback to form
+      body = await httpFetch(
+        'https://jadeite.migu.cn/music_search/v3/search/searchAll',
+        {
+          method: 'post',
+          headers: {
+            'Content-Type': 'application/x-www-form-urlencoded',
+            sign,
+            deviceId,
+            timestamp: time,
+            appkey: yyapp2d,
+            Referer: 'https://music.migu.cn/',
+            'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36',
+          },
+          form: {
+            text: str,
+            pageIndex: page,
+            pageSize: limit,
+            type: '1',
+          },
         },
-      },
-    )
+      ).promise
+    }
 
-    if (!body || !body.data) {
+    if (body.statusCode !== 200) {
+      songloft?.log?.warn(`[mg search] HTTP ${body.statusCode}: ${JSON.stringify(body.body).substring(0, 200)}`)
       return { list: [], allPage: 0, total: 0, limit, source: 'mg' }
     }
 
-    const songArray = body.data.songResult?.result || []
-    const total = body.data.songResult?.totalCount || 0
+    const resultBody = body.body
+    if (!resultBody || !resultBody.data) {
+      songloft?.log?.warn(`[mg search] no data in response: ${JSON.stringify(resultBody).substring(0, 200)}`)
+      return { list: [], allPage: 0, total: 0, limit, source: 'mg' }
+    }
+
+    const songArray = resultBody.data.songResult?.result || []
+    const total = resultBody.data.songResult?.totalCount || 0
 
     const list = songArray
       .filter((item: any) => item.songId || item.id)
       .map(mapSongItem)
 
     return { list, allPage: Math.ceil(total / limit), total, limit, source: 'mg' }
-  } catch {
+  } catch (err) {
+    songloft?.log?.warn(`[mg search] error: ${err?.message || err}`)
     return { list: [], allPage: 0, total: 0, limit, source: 'mg' }
   }
 }

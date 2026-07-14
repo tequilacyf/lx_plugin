@@ -1,8 +1,36 @@
 import { httpFetch } from '../request'
 import { decodeName, formatPlayTime, sizeFormate } from '../utils'
-import { formatSinger, formatPic } from './util'
+import { formatSinger, formatPic, matchToken } from './util'
 
-const searchMusic = (str: string, page: number, limit: number) => {
+let kwTokenCache = ''
+let kwTokenExpiry = 0
+
+async function ensureToken(): Promise<string> {
+  if (kwTokenCache && Date.now() < kwTokenExpiry) return kwTokenCache
+  try {
+    const resp = await fetch('http://www.kuwo.cn/', {
+      method: 'GET',
+      headers: {
+        'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36',
+      },
+    })
+    const headers: Record<string, string> = {}
+    if (resp.headers && typeof resp.headers.forEach === 'function') {
+      resp.headers.forEach((v: string, k: string) => { headers[k] = v })
+    }
+    const token = matchToken(headers) || ''
+    if (token) {
+      kwTokenCache = token
+      kwTokenExpiry = Date.now() + 600000
+    }
+    return token
+  } catch {
+    return kwTokenCache || ''
+  }
+}
+
+const searchMusic = async (str: string, page: number, limit: number) => {
+  const token = await ensureToken()
   const params = [
     'client=kt',
     `all=${encodeURIComponent(str)}`,
@@ -28,8 +56,8 @@ const searchMusic = (str: string, page: number, limit: number) => {
     timeout: 15000,
     headers: {
       'Referer': 'http://www.kuwo.cn/',
-      'csrf': '',
-      'Cookie': 'kw_token=',
+      'csrf': token,
+      'Cookie': `kw_token=${token}`,
     },
   })
 }

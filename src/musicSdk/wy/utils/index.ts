@@ -41,7 +41,7 @@ export const eapiRequest = async (url: string, data: any): Promise<any> => {
   const form = new URLSearchParams()
   form.append('params', encrypted)
 
-  const resp = await httpFetch(`http://interface.music.163.com/eapi/batch`, {
+  const resp = await httpFetch(`https://interface.music.163.com/eapi/batch`, {
     method: 'post',
     headers: {
       'Content-Type': 'application/x-www-form-urlencoded',

@@ -122,6 +122,7 @@ export const search = async (str: string, page = 1, limit = 30) => {
   try {
     const result = await eapiRequest('/api/search/song/list/page', data)
     if (!result || !result.data) {
+      songloft?.log?.warn(`[wy search] no data in response`)
       return { list: [], allPage: 0, total: 0, limit, source: 'wy' }
     }
 
@@ -132,7 +133,8 @@ export const search = async (str: string, page = 1, limit = 30) => {
     const list = songArray.map((item: any) => mapSongItem(item, privileges))
 
     return { list, allPage: Math.ceil(total / limit), total, limit, source: 'wy' }
-  } catch {
+  } catch (err) {
+    songloft?.log?.warn(`[wy search] error: ${err?.message || err}`)
     return { list: [], allPage: 0, total: 0, limit, source: 'wy' }
   }
 }

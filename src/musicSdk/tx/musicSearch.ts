@@ -1,31 +1,31 @@
 import { httpFetch } from '../request'
 import { formatPlayTime, sizeFormate, formatSingerName } from '../utils'
 
-const deviceInfo = {
-  sid: '',
-  uid: 0,
-  current_flows: 0,
-  IsNotify: 0,
-  tmeLoginType: 2,
-  tmeAppID: 'qqmusic',
-  grey_city: 1,
-  tmeLoginAccount: 0,
-  login_type: 0,
-  qq: 0,
-  ad: 0,
-  secret: '',
-  ip: '',
-  time: 0,
-  agent_fresh: 0,
-  agent_type: 0,
-  agent_chat: 0,
-  build_version: '8.5.0.1842',
-  ua: 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36',
-  platform: 'win32',
-  tmeVersion: '8.5.0',
-}
-
 const searchMusic = (str: string, page: number, limit: number) => {
+  const deviceInfo = {
+    sid: '',
+    uid: Math.floor(Math.random() * 100000000),
+    current_flows: 0,
+    IsNotify: 0,
+    tmeLoginType: 2,
+    tmeAppID: 'qqmusic',
+    grey_city: 1,
+    tmeLoginAccount: 0,
+    login_type: 0,
+    qq: 0,
+    ad: 0,
+    secret: '',
+    ip: '',
+    time: Date.now(),
+    agent_fresh: 0,
+    agent_type: 0,
+    agent_chat: 0,
+    build_version: '8.5.0.1842',
+    ua: 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36',
+    platform: 'win32',
+    tmeVersion: '8.5.0',
+  }
+
   const data = {
     comm: deviceInfo,
     req: {
@@ -36,7 +36,10 @@ const searchMusic = (str: string, page: number, limit: number) => {
   }
   return httpFetch('https://u.y.qq.com/cgi-bin/musicu.fcg', {
     method: 'post',
-    headers: { 'Content-Type': 'application/json' },
+    headers: {
+      'Content-Type': 'application/json',
+      'Referer': 'https://y.qq.com/',
+    },
     body: data,
   })
 }
