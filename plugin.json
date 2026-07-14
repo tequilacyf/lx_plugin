@@ -12,7 +12,8 @@
     "playlists.write",
     "jsenv"
   ],
+  "publicPaths": ["/api"],
   "download_url": "",
   "entryHash": "a54a36bd4511bb6dcf8213cf2eda9e37396139a3936969450e9c778cbb2c8b2b",
-  "zipHash": "6fc9652e4ca51d0d559b272389827caf5d6a37562fa2dc937531249dae45e8a0"
+  "zipHash": ""
 }
