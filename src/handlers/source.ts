@@ -64,6 +64,7 @@ export function createSourceHandlers(sourceManager: SourceManager) {
       const resp = await fetch(url, {
         headers: {
           'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36',
+          'Accept-Encoding': 'identity',
         },
       })
       if (!resp.ok) return errorResponse(`Failed to fetch source script: HTTP ${resp.status} ${resp.statusText}`)
@@ -71,6 +72,9 @@ export function createSourceHandlers(sourceManager: SourceManager) {
       const script = await resp.text()
       if (!script || script.trim().length === 0) {
         return errorResponse('Fetched script is empty')
+      }
+      if (script.length < 50) {
+        songloft.log.warn(`[import-url] Script is suspiciously short (${script.length} bytes): ${script.substring(0, 200)}`)
       }
 
       songloft.log.info(`[import-url] Fetched ${script.length} bytes from ${url}`)
