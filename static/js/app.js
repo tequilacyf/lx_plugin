@@ -1,7 +1,9 @@
 (function() {
   'use strict';
   
-  const API_BASE = '';  // Same origin, paths relative to plugin
+  // Plugin is served under /api/v1/jsplugin/lxmusic/
+  // API routes are relative to this base
+  const API_BASE = '/api/v1/jsplugin/lxmusic';
   let currentPage = 1;
   let searchKeyword = '';
   let importQueue = [];
@@ -22,7 +24,8 @@
   // API call
   async function api(path, options = {}) {
     try {
-      const resp = await fetch(path, {
+      const url = path.startsWith('/') ? API_BASE + path : path;
+      const resp = await fetch(url, {
         headers: { 'Content-Type': 'application/json' },
         ...options,
       });
