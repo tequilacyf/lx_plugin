@@ -36,13 +36,16 @@ export function createSourceHandlers(sourceManager: SourceManager) {
   async function handleImportUrl(req: HTTPRequest): Promise<HTTPResponse> {
     let url = ''
     try {
-      const body = decodeBody(req)
-      if (!body) return errorResponse('Empty request body')
-      songloft.log.info(`[import-url] body length=${body.length} first100="${body.substring(0, 100)}" last100="${body.substring(Math.max(0, body.length - 100))}"`)
-      const parsed = JSON.parse(body)
-      url = parsed.url
-
-      if (!url) return errorResponse('url is required')
+      // Prefer query param to avoid host hex-decoding POST body
+      const q = parseQuery(req.query)
+      url = q.url
+      if (!url) {
+        const body = decodeBody(req)
+        if (body) {
+          try { url = JSON.parse(body).url } catch {}
+        }
+      }
+      if (!url) return errorResponse('url is required (query param or JSON body)')
 
       songloft.log.info(`[import-url] Fetching source from: ${url}`)
 
